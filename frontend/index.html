@@ -1,11 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CookMyShow</title>
+
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-    
+
+  <!-- HEADER -->
+  <header class="header">
+    <h1>CookMyShow</h1>
+  </header>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" data-tab="events">Events</button>
+    <button class="tab" data-tab="bookings">Bookings</button>
+    <button class="tab" data-tab="profile">Profile</button>
+  </div>
+
+  <!-- CONTENT -->
+  <main id="content">
+
+    <!-- EVENTS TAB -->
+    <div id="events" class="tab-content active"></div>
+
+    <!-- BOOKINGS TAB -->
+    <div id="bookings" class="tab-content">
+
+      <!-- LOGIN -->
+      <div id="bookingLogin">
+        <h2>Login</h2>
+        <input type="text" id="b_username" placeholder="Username">
+        <input type="password" id="b_password" placeholder="Password">
+        <button id="b_loginBtn">Login</button>
+        <p id="b_loginStatus"></p>
+      </div>
+
+      <!-- CREATE EVENT -->
+      <div id="createEventSection" style="display: none;">
+        <h2>Create Event</h2>
+
+        <input type="text" id="eventName" placeholder="Event Name">
+        <input type="date" id="eventDate">
+        <input type="text" id="eventLocation" placeholder="Location">
+
+        <button id="createEventBtn">Create Event</button>
+        <p id="createStatus"></p>
+      </div>
+
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div id="profile" class="tab-content">
+      Profile coming soon...
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>© 2026 CookMyShow</p>
+  </footer>
+
+  <script src="script.js"></script>
 </body>
 </html>
