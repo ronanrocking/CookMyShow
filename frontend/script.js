@@ -15,10 +15,33 @@ tabs.forEach(tab => {
 });
 
 
-// ---------- MOCK EVENTS (READ ONLY) ----------
+
+// ---------- MOCK EVENTS (NEW FORMAT) ----------
 const mockEvents = [
-  { id: 1, name: "Music Concert", date: "2026-04-01", location: "Bangalore" },
-  { id: 2, name: "Tech Fest", date: "2026-04-05", location: "Manipal" }
+  { 
+    event_id: 1, 
+    title: "Sunburn Manipal", 
+    description: "The biggest music festival in the student hub. Join us for a night of electronic beats and neon lights.", 
+    event_type: "Music & Performances", 
+    language: "English", 
+    duration: 180 
+  },
+  { 
+    id: 2, 
+    title: "Inter-College Cricket Finals", 
+    description: "MIT vs KMC. The ultimate showdown for the championship trophy at the end of the semester.", 
+    event_type: "Sports", 
+    language: "Hindi/English", 
+    duration: 210 
+  },
+  { 
+    id: 3, 
+    title: "JS & React Workshop", 
+    description: "Build your first portfolio website and learn how to host it on a Raspberry Pi 3B+.", 
+    event_type: "Workshops & Talks", 
+    language: "English", 
+    duration: 120 
+  }
 ];
 
 
@@ -33,29 +56,37 @@ async function fetchEvents() {
 // ---------- LOAD EVENTS ----------
 async function loadEvents() {
   const eventsDiv = document.getElementById("events");
-
-  eventsDiv.innerHTML = "Loading...";
+  
+  // Replace with your friend's IP address
+  //const response = await fetch("http://192.168.x.x:8000/events"); 
+  //const events = await response.json();
 
   const events = await fetchEvents();
-
   eventsDiv.innerHTML = "";
 
   events.forEach(event => {
     const card = document.createElement("div");
     card.className = "event-card";
 
+    // Mapping the new database fields here
     card.innerHTML = `
-      <div class="event-title">${event.name}</div>
-      <div class="event-details">Date: ${event.date}</div>
-      <div class="event-details">Location: ${event.location}</div>
-      <button class="book-btn" data-id="${event.id}">Book</button>
+      <div class="event-type-badge">${event.event_type}</div>
+      <h3 class="event-title">${event.title}</h3>
+      <p class="event-desc">${event.description}</p>
+      
+      <div class="event-meta">
+        <span><strong>Language:</strong> ${event.language}</span>
+        <span><strong>Duration:</strong> ${event.duration} mins</span>
+      </div>
+
+      <button class="book-btn" data-id="${event.event_id}">Book Now</button>
     `;
 
+    // Handle Redirect
     const button = card.querySelector(".book-btn");
-
     button.addEventListener("click", () => {
-      const eventId = button.getAttribute("data-id");
-      window.location.href = `booking.html?eventId=${eventId}`;
+      const id = button.getAttribute("data-id");
+      window.location.href = `booking.html?eventId=${id}`;
     });
 
     eventsDiv.appendChild(card);
