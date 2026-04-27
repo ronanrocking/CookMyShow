@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile — CookMyShow</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="navbar" id="main-nav"></header>
+
+<div class="page">
+  <div style="max-width:960px;margin:0 auto">
+
+    <!-- PROFILE HERO -->
+    <div class="profile-hero" id="profile-hero">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="filter-bar" style="margin-bottom:32px" id="profile-tabs">
+      <button class="filter-chip active" data-tab="wishlist">♡ Wishlist</button>
+      <button class="filter-chip" data-tab="activity">📊 Activity</button>
+    </div>
+
+    <!-- TAB CONTENT -->
+    <div id="tab-wishlist">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h2 style="font-family:var(--font-display);font-size:1.8rem;letter-spacing:1px">Your <span style="color:var(--accent)">Wishlist</span></h2>
+        <span id="wishlist-count" style="font-size:0.8rem;color:var(--text-muted)"></span>
+      </div>
+      <div class="events-grid" id="wishlist-grid">
+        <div class="loader"><div class="spinner"></div><span>Loading wishlist…</span></div>
+      </div>
+    </div>
+
+    <div id="tab-activity" style="display:none">
+      <h2 style="font-family:var(--font-display);font-size:1.8rem;letter-spacing:1px;margin-bottom:20px">Your <span style="color:var(--accent)">Activity</span></h2>
+      <div id="activity-grid">
+        <div class="loader"><div class="spinner"></div><span>Loading…</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNav('');
+    if (!Auth.isLoggedIn()) { window.location.href = 'login.html'; return; }
+    loadProfile();
+    loadWishlist();
+
+    document.querySelectorAll('#profile-tabs .filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('#profile-tabs .filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const tab = chip.dataset.tab;
+        document.getElementById('tab-wishlist').style.display = tab === 'wishlist' ? 'block' : 'none';
+        document.getElementById('tab-activity').style.display = tab === 'activity' ? 'block' : 'none';
+        if (tab === 'activity') loadActivity();
+      });
+    });
+  });
+
+  async function loadProfile() {
+    const hero = document.getElementById('profile-hero');
+    try {
+      const user = await api.get('/users/me');
+      if (!user) throw new Error('Not found');
+
+      const initials = (user.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+
+      hero.innerHTML = `
+        <div class="profile-avatar">${initials}</div>
+        <div style="flex:1">
+          <div class="profile-name">${user.name || '—'}</div>
+          <div class="profile-email">✉️ ${user.email || '—'}</div>
+          ${user.phone ? `<div class="profile-phone">📱 ${user.phone}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
+          <a href="my-bookings.html" class="btn btn-primary btn-sm">🎟️ My Tickets</a>
+          <button class="btn btn-secondary btn-sm" onclick="signOut()">Sign Out</button>
+        </div>`;
+    } catch(e) {
+      hero.innerHTML = `<div style="color:var(--text-muted)">${e.message}</div>`;
+    }
+  }
+
+  async function loadWishlist() {
+    const grid = document.getElementById('wishlist-grid');
+    try {
+      const wishlist = await api.get('/users/me/wishlist') || [];
+      document.getElementById('wishlist-count').textContent = `${wishlist.length} saved event${wishlist.length !== 1 ? 's' : ''}`;
+
+      if (!wishlist.length) {
+        grid.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1">
+            <div class="empty-state-icon">♡</div>
+            <div class="empty-state-title">Your wishlist is empty</div>
+            <p class="empty-state-sub">Add events you're interested in to keep track of them.</p>
+            <a href="index.html" class="btn btn-primary" style="margin-top:16px">Explore Events</a>
+          </div>`;
+        return;
+      }
+
+      grid.innerHTML = '';
+      wishlist.forEach((item, i) => {
+        // Wishlist items may be event objects or {event_id, ...}
+        const ev = item.event_id ? item : item;
+        const card = renderEventCard(ev, { showWishlist: false });
+        card.style.animation = `fadeUp 0.3s ease ${i * 50}ms both`;
+        grid.appendChild(card);
+      });
+    } catch(e) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">⚠️</div><p class="empty-state-sub">${e.message}</p></div>`;
+    }
+  }
+
+  async function loadActivity() {
+    const grid = document.getElementById('activity-grid');
+    grid.innerHTML = '<div class="loader"><div class="spinner"></div><span>Loading…</span></div>';
+    try {
+      const bookings = await api.get('/users/me/bookings') || [];
+
+      if (!bookings.length) {
+        grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-title">No bookings yet</div><p class="empty-state-sub">Your booking history will appear here.</p></div>`;
+        return;
+      }
+
+      // Stats
+      const confirmed = bookings.filter(b => b.booking_status === 'CONFIRMED');
+      const totalSpent = confirmed.reduce((acc, b) => acc + (b.price || 0) * (b.ticket_count || 0), 0);
+
+      grid.innerHTML = `
+        <div class="analytics-grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));margin-bottom:28px">
+          <div class="analytics-card">
+            <div class="analytics-value">${bookings.length}</div>
+            <div class="analytics-label">Total Bookings</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-value">${confirmed.length}</div>
+            <div class="analytics-label">Confirmed</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-value">${bookings.filter(b=>b.booking_status==='CANCELLED').length}</div>
+            <div class="analytics-label">Cancelled</div>
+          </div>
+          <div class="analytics-card">
+            <div class="analytics-value">${confirmed.reduce((a,b)=>a+(b.ticket_count||0),0)}</div>
+            <div class="analytics-label">Tickets Bought</div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+          <div style="padding:16px 20px;border-bottom:1px solid var(--border);font-family:var(--font-display);letter-spacing:1px">Recent Bookings</div>
+          <table class="data-table">
+            <thead><tr>
+              <th>Event</th>
+              <th>Show Date</th>
+              <th>Tickets</th>
+              <th>Status</th>
+            </tr></thead>
+            <tbody>
+              ${bookings.slice(0,10).map(b => `
+                <tr>
+                  <td style="color:var(--text-primary)">${b.title || b.event_title || '—'}</td>
+                  <td>${formatDate(b.show_date)}</td>
+                  <td>${b.ticket_count || '—'}</td>
+                  <td>${{
+                    'CONFIRMED': '<span class="tag tag-success">Confirmed</span>',
+                    'CANCELLED': '<span class="tag tag-danger">Cancelled</span>',
+                    'PENDING': '<span class="tag tag-warning">Pending</span>',
+                  }[b.booking_status] || `<span class="tag tag-info">${b.booking_status}</span>`}</td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch(e) {
+      grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>${e.message}</p></div>`;
+    }
+  }
+
+  function signOut() {
+    showConfirmModal('Sign Out?', 'You will be signed out of your account.', () => {
+      Auth.clear();
+      window.location.href = 'index.html';
+    });
+  }
+</script>
+
+<style>
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to { opacity:1; transform:translateY(0); }
+}
+</style>
+</body>
+</html>

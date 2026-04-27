@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Tickets — CookMyShow</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="navbar" id="main-nav"></header>
+
+<div class="page">
+  <div style="max-width:800px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;flex-wrap:wrap;gap:16px">
+      <div>
+        <h1 style="font-family:var(--font-display);font-size:2.4rem;letter-spacing:1px">My <span style="color:var(--accent)">Tickets</span></h1>
+        <p style="color:var(--text-secondary);font-size:0.875rem;margin-top:6px">Your booked events and upcoming shows</p>
+      </div>
+      <a href="index.html" class="btn btn-primary btn-sm">+ Book More Events</a>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="filter-bar" style="margin-bottom:24px">
+      <button class="filter-chip active" data-status="all">All Tickets</button>
+      <button class="filter-chip" data-status="CONFIRMED">Confirmed</button>
+      <button class="filter-chip" data-status="PENDING">Pending</button>
+      <button class="filter-chip" data-status="CANCELLED">Cancelled</button>
+    </div>
+
+    <div id="bookings-list">
+      <div class="loader"><div class="spinner"></div><span>Loading your tickets…</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOOKING DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Ticket Details</h2>
+      <button class="modal-close" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  let allBookings = [];
+  let currentFilter = 'all';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNav('bookings');
+    if (!Auth.isLoggedIn()) { window.location.href = 'login.html'; return; }
+    loadBookings();
+
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        currentFilter = chip.dataset.status;
+        renderBookings();
+      });
+    });
+  });
+
+  async function loadBookings() {
+    try {
+      allBookings = await api.get('/users/me/bookings') || [];
+      renderBookings();
+    } catch (e) {
+      document.getElementById('bookings-list').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">⚠️</div>
+          <div class="empty-state-title">Couldn't load tickets</div>
+          <p class="empty-state-sub">${e.message}</p>
+        </div>`;
+    }
+  }
+
+  function renderBookings() {
+    const list = document.getElementById('bookings-list');
+    let filtered = allBookings;
+
+    if (currentFilter !== 'all') {
+      filtered = allBookings.filter(b => {
+          if (currentFilter === 'PENDING') {
+            return b.booking_status === 'PENDING_PAYMENT';
+          }
+          if (currentFilter === 'CONFIRMED') {
+            return b.booking_status === 'CONFIRMED';
+          }
+          if (currentFilter === 'CANCELLED') {
+            return b.booking_status === 'CANCELLED'
+                || b.booking_status === 'FAILED'
+                || b.booking_status === 'TIMED_OUT';
+          }
+          return true;
+        });
+    }
+
+    if (!filtered.length) {
+      list.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-state-icon">🎟️</div>
+          <div class="empty-state-title">${currentFilter === 'all' ? 'No tickets yet' : `No ${currentFilter.toLowerCase()} tickets`}</div>
+          <p class="empty-state-sub">Book an event to see your tickets here.</p>
+          <a href="index.html" class="btn btn-primary" style="margin-top:20px">Explore Events</a>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = '';
+    filtered.forEach((b, i) => {
+      const card = createBookingCard(b);
+      card.style.animation = `fadeUp 0.3s ease ${i * 50}ms both`;
+      list.appendChild(card);
+    });
+  }
+
+  function createBookingCard(b) {
+    const div = document.createElement('div');
+    const statusClass = {
+      'CONFIRMED': 'confirmed',
+      'CANCELLED': 'cancelled',
+      'PENDING': '',
+    }[b.booking_status] || '';
+
+    const statusTag = {
+      'CONFIRMED': '<span class="tag tag-success">✓ Confirmed</span>',
+      'CANCELLED': '<span class="tag tag-danger">✕ Cancelled</span>',
+      'PENDING_PAYMENT': '<span class="tag tag-warning">⏳ Pending Payment</span>',
+    }[b.booking_status] || `<span class="tag tag-info">${b.booking_status}</span>`;
+
+      div.className = `booking-card ${statusClass}`;
+    div.style.marginBottom = '16px';
+
+      div.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:72px;padding-right:16px;border-right:1px solid var(--border)">
+        <div class="ticket-count">${b.ticket_count || '—'}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">ticket${(b.ticket_count||1)>1?'s':''}</div>
+      </div>
+      <div class="booking-card-body">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px">
+          <div class="booking-card-event">${b.title || b.event_title || 'Event'}</div>
+          ${statusTag}
+        </div>
+        <div class="booking-card-meta">
+          <span>📅 ${formatDate(b.show_date)}</span>
+          <span>🎟️ Booking #${b.booking_id}</span>
+          ${b.price ? `<span>💰 ${formatCurrency(b.price)} /ticket</span>` : ''}
+          ${b.booking_time ? `<span>🕐 Booked ${formatDate(b.booking_time)}</span>` : ''}
+        </div>
+      </div>
+      <div class="booking-card-actions">
+      <button class="btn btn-secondary btn-sm" onclick="viewDetails(${b.booking_id})">
+        View Ticket
+      </button>
+
+      ${b.booking_status === 'PENDING_PAYMENT' ? `
+        <button class="btn btn-primary btn-sm" onclick="continuePayment(${b.booking_id})">
+          Complete Payment
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="cancelBooking(${b.booking_id})">
+          Cancel
+        </button>
+      ` : ''}
+
+      ${b.booking_status === 'CONFIRMED' ? `
+        <button class="btn btn-danger btn-sm" onclick="cancelBooking(${b.booking_id})">
+          Cancel
+        </button>
+      ` : ''}
+
+      <button class="btn btn-ghost btn-sm" onclick="hideBooking(${b.booking_id})">
+        Hide
+      </button>
+    </div>`;
+
+    return div;
+  }
+
+  async function viewDetails(bookingId) {
+    const content = document.getElementById('detail-content');
+    content.innerHTML = '<div class="loader"><div class="spinner"></div></div>';
+    openModal('detail-modal');
+    try {
+      const b = await api.get(`/bookings/${bookingId}`);
+      if (!b) throw new Error('Not found');
+
+      const statusTag = {
+        'CONFIRMED': '<span class="tag tag-success">✓ Confirmed</span>',
+        'CANCELLED': '<span class="tag tag-danger">✕ Cancelled</span>',
+        'PENDING': '<span class="tag tag-warning">⏳ Pending</span>',
+      }[b.booking_status] || `<span class="tag tag-info">${b.booking_status}</span>`;
+
+      content.innerHTML = `
+        <div style="text-align:center;margin-bottom:24px">
+          <div style="font-size:3rem;margin-bottom:8px">${categoryEmoji('')}</div>
+          <div style="font-size:1.1rem;font-weight:600">${b.event_title || 'Event'}</div>
+          <div style="margin-top:8px">${statusTag}</div>
+        </div>
+        <div class="booking-summary">
+          <div class="summary-row"><span class="label">Booking ID</span><span class="value">#${b.booking_id}</span></div>
+          <div class="summary-row"><span class="label">Show Date</span><span class="value">${formatDate(b.show_date)}</span></div>
+          <div class="summary-row"><span class="label">Show Time</span><span class="value">${formatTime(b.start_datetime)}</span></div>
+          <div class="summary-row"><span class="label">Tickets</span><span class="value">${b.ticket_count}</span></div>
+          <div class="summary-row"><span class="label">Status</span><span class="value">${b.booking_status}</span></div>
+          ${b.booking_time ? `<div class="summary-row"><span class="label">Booked On</span><span class="value">${formatDate(b.booking_time)}</span></div>` : ''}
+        </div>
+        ${b.booking_status === 'CONFIRMED' || b.booking_status === 'PENDING' ? `
+          <button class="btn btn-danger" style="width:100%;margin-top:20px"
+            onclick="cancelBooking(${b.booking_id},true)">
+            Cancel Booking
+          </button>
+        ` : ''}
+
+        ${b.booking_status === 'PENDING' ? `
+          <button class="btn btn-primary" style="width:100%;margin-top:10px"
+            onclick="continuePayment(${b.booking_id})">
+            Complete Payment
+          </button>
+        ` : ''}`;
+    } catch(e) {
+      content.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p>${e.message}</p></div>`;
+    }
+  }
+
+  async function cancelBooking(bookingId, fromModal = false) {
+    showConfirmModal(
+      'Cancel Booking?',
+      'This action cannot be undone. Your tickets will be released.',
+      async () => {
+        try {
+          await api.post(`/bookings/${bookingId}/cancel`, {});
+          showToast('Booking cancelled.', 'info');
+          if (fromModal) closeModal('detail-modal');
+          loadBookings();
+        } catch(e) {
+          showToast(e.message || 'Cancel failed', 'error');
+        }
+      }
+    );
+  }
+
+  async function hideBooking(bookingId) {
+    showConfirmModal(
+      'Hide Ticket?',
+      'This ticket will be hidden from your list. (It won\'t be cancelled.)',
+      async () => {
+        try {
+          await api.delete(`/users/me/bookings/${bookingId}`);
+          showToast('Ticket hidden.', 'info');
+          loadBookings();
+        } catch(e) {
+          showToast(e.message || 'Action failed', 'error');
+        }
+      }
+    );
+  }
+  function continuePayment(bookingId) {
+    window.location.href = `booking.html?booking_id=${bookingId}`;
+  }
+</script>
+
+<style>
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to { opacity:1; transform:translateY(0); }
+}
+</style>
+</body>
+</html>

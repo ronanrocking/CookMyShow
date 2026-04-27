@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Payment — CookMyShow</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="navbar" id="main-nav"></header>
+
+<div class="page">
+  <!-- Step indicator -->
+  <div class="steps" style="max-width:600px;margin:0 auto 36px">
+    <div class="step done"><span class="step-num">1</span>Show</div>
+    <div class="step done"><span class="step-num">2</span>Tickets</div>
+    <div class="step active"><span class="step-num">3</span>Payment</div>
+    <div class="step" id="step-confirm"><span class="step-num">4</span>Confirm</div>
+  </div>
+
+  <div style="max-width:860px;margin:0 auto">
+    <div class="two-col" style="grid-template-columns:1fr 340px">
+
+      <!-- LEFT: Payment Form -->
+      <div>
+        <h1 style="font-family:var(--font-display);font-size:2rem;letter-spacing:1px;margin-bottom:8px">Complete <span style="color:var(--accent)">Payment</span></h1>
+        <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:28px" id="expires-label">Your booking is being held…</p>
+
+        <!-- Timer -->
+        <div style="background:rgba(232,56,109,0.08);border:1px solid rgba(232,56,109,0.2);border-radius:var(--radius-md);padding:14px 18px;margin-bottom:28px;display:flex;align-items:center;gap:14px">
+          <span style="font-size:1.4rem">⏳</span>
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">Complete payment within</div>
+            <div id="timer" style="font-family:var(--font-display);font-size:1.8rem;color:var(--accent-alt);letter-spacing:2px">05:00</div>
+          </div>
+        </div>
+
+        <!-- Payment Methods -->
+        <div style="margin-bottom:24px">
+          <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px">Choose Payment Method</div>
+          <div class="payment-methods">
+            <div class="payment-method selected" data-method="UPI" onclick="selectMethod(this,'UPI')">
+              <span class="payment-method-icon">📱</span>
+              <span class="payment-method-label">UPI / PhonePe / GPay</span>
+              <div class="payment-method-check">✓</div>
+            </div>
+            <div class="payment-method" data-method="CARD" onclick="selectMethod(this,'CARD')">
+              <span class="payment-method-icon">💳</span>
+              <span class="payment-method-label">Credit / Debit Card</span>
+              <div class="payment-method-check"></div>
+            </div>
+            <div class="payment-method" data-method="NET_BANKING" onclick="selectMethod(this,'NETBANKING')">
+              <span class="payment-method-icon">🏦</span>
+              <span class="payment-method-label">Net Banking</span>
+              <div class="payment-method-check"></div>
+            </div>
+            <div class="payment-method" data-method="WALLET" onclick="selectMethod(this,'WALLET')">
+              <span class="payment-method-icon">👛</span>
+              <span class="payment-method-label">Paytm / Amazon Pay</span>
+              <div class="payment-method-check"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Simulated Payment Info -->
+        <div style="background:rgba(99,179,237,0.06);border:1px solid rgba(99,179,237,0.2);border-radius:var(--radius-md);padding:14px 18px;margin-bottom:28px;font-size:0.8rem;color:#63b3ed">
+          <strong>Demo Mode:</strong> This is a simulated payment. Click "Pay Now" to simulate a successful transaction.
+        </div>
+
+        <button class="btn btn-primary btn-lg" style="width:100%" id="pay-btn" onclick="initiatePayment()">
+          Pay <span id="pay-amount">—</span>
+        </button>
+
+        <div style="text-align:center;margin-top:16px">
+          <button onclick="cancelBooking()" style="background:none;border:none;color:var(--text-muted);font-size:0.8rem;cursor:pointer;text-decoration:underline">Cancel and go back</button>
+        </div>
+      </div>
+
+      <!-- RIGHT: Order Summary -->
+      <div style="position:sticky;top:calc(var(--nav-h) + 20px)">
+        <div style="background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius-xl);padding:24px">
+          <div style="font-family:var(--font-display);font-size:1.2rem;letter-spacing:1px;margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)">Order Summary</div>
+
+          <div id="order-event-badge" style="background:var(--bg-card);border-radius:var(--radius-md);padding:14px;margin-bottom:18px;display:flex;gap:12px;align-items:center">
+            <div style="font-size:2rem" id="order-event-emoji">🎪</div>
+            <div>
+              <div style="font-weight:600;font-size:0.9rem" id="order-event-name">Loading…</div>
+              <div style="font-size:0.78rem;color:var(--text-muted)" id="order-show-info">—</div>
+            </div>
+          </div>
+
+          <div class="booking-summary">
+            <div class="summary-row">
+              <span class="label">Tickets</span>
+              <span class="value" id="summary-tickets">—</span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Price/ticket</span>
+              <span class="value" id="summary-price">—</span>
+            </div>
+            <div class="summary-row">
+              <span class="label">Convenience fee</span>
+              <span class="value">₹0</span>
+            </div>
+            <div class="summary-row total">
+              <span class="label">Total</span>
+              <span class="value" id="summary-total">—</span>
+            </div>
+          </div>
+
+          <div style="margin-top:18px;padding:12px;background:rgba(46,204,113,0.06);border:1px solid rgba(46,204,113,0.2);border-radius:var(--radius-sm);font-size:0.78rem;color:var(--accent-green)">
+            🔒 Secure payment. Your details are protected.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="modal-overlay" id="success-modal">
+  <div class="modal" style="text-align:center">
+    <div class="modal-success-icon">✓</div>
+    <h2 class="modal-title" style="margin-bottom:10px">Payment Successful!</h2>
+    <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:24px">Your tickets are confirmed. Have an amazing time!</p>
+
+    <div style="background:var(--bg-card);border-radius:var(--radius-md);padding:16px;margin-bottom:24px;text-align:left">
+      <div class="summary-row"><span class="label">Booking ID</span><span class="value" id="success-booking-id">—</span></div>
+      <div class="summary-row"><span class="label">Event</span><span class="value" id="success-event">—</span></div>
+      <div class="summary-row"><span class="label">Tickets</span><span class="value" id="success-tickets">—</span></div>
+      <div class="summary-row total"><span class="label">Paid</span><span class="value" id="success-total">—</span></div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%" onclick="goToBookings()">View My Tickets</button>
+    <button class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="window.location.href='index.html'">Browse More Events</button>
+  </div>
+</div>
+
+<!-- FAILURE MODAL -->
+<div class="modal-overlay" id="failure-modal">
+  <div class="modal" style="text-align:center">
+    <div class="modal-error-icon">✕</div>
+    <h2 class="modal-title" style="margin-bottom:10px">Payment Failed</h2>
+    <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:24px" id="failure-msg">Something went wrong with your payment.</p>
+    <button class="btn btn-primary" style="width:100%" onclick="closeModal('failure-modal')">Try Again</button>
+    <button class="btn btn-secondary" style="width:100%;margin-top:10px" onclick="window.location.href='index.html'">Go Back</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const bookingId = params.get('booking_id');
+  const showId    = params.get('show_id');
+  const eventId   = params.get('event_id');
+  const expiresAt = params.get('expires');
+
+  let selectedPayMethod = 'UPI';
+  let timerInterval;
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    renderNav('');
+
+    if (!Auth.isLoggedIn()) { window.location.href = 'login.html'; return; }
+    if (!bookingId) { window.location.href = 'index.html'; return; }
+
+    await loadBookingDetails()
+    startTimer();
+    loadEventDetails();
+  });
+
+  let tickets = 1;
+  let price = 0;
+
+  async function loadBookingDetails() {
+      try {
+        const b = await api.get(`/bookings/${bookingId}`);
+
+        tickets = parseInt(b.ticket_count) || 1;
+        total = parseFloat(b.total_amount) || 0;
+
+        price = total / tickets;
+
+        fillSummary(); // refresh UI
+      } catch (e) {
+        console.error("Failed to load booking", e);
+      }
+  }
+
+  async function loadEventDetails() {
+    try {
+      const ev = await api.get(`/events/${eventId}`);
+      if (ev) {
+        document.getElementById('order-event-name').textContent = ev.title;
+        document.getElementById('order-event-emoji').textContent = categoryEmoji(ev.event_type);
+        document.getElementById('success-event').textContent = ev.title;
+      }
+    } catch(_) {}
+  }
+
+  function fillSummary() {
+    const total = price * tickets;
+    document.getElementById('summary-tickets').textContent = tickets;
+    document.getElementById('summary-price').textContent = formatCurrency(price);
+    document.getElementById('summary-total').textContent = formatCurrency(total);
+    document.getElementById('pay-amount').textContent = formatCurrency(total);
+    document.getElementById('success-booking-id').textContent = `#${bookingId}`;
+    document.getElementById('success-tickets').textContent = `${tickets} ticket${tickets > 1 ? 's' : ''}`;
+    document.getElementById('success-total').textContent = formatCurrency(total);
+    document.getElementById('order-show-info').textContent = `${tickets} ticket${tickets > 1 ? 's' : ''} — ${formatCurrency(total)}`;
+  }
+
+  function startTimer() {
+    if (!expiresAt) return;
+    const expiry = new Date(expiresAt).getTime();
+
+    timerInterval = setInterval(() => {
+      const now = Date.now();
+      const diff = Math.max(0, expiry - now);
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      document.getElementById('timer').textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+
+      if (diff <= 0) {
+        clearInterval(timerInterval);
+        document.getElementById('timer').textContent = '00:00';
+        document.getElementById('pay-btn').disabled = true;
+        showToast('Booking expired. Please try again.', 'error');
+        setTimeout(() => window.location.href = `event.html?id=${eventId}`, 2000);
+      }
+    }, 1000);
+  }
+
+  function selectMethod(el, method) {
+    document.querySelectorAll('.payment-method').forEach(m => {
+      m.classList.remove('selected');
+      m.querySelector('.payment-method-check').textContent = '';
+    });
+    el.classList.add('selected');
+    el.querySelector('.payment-method-check').textContent = '✓';
+    selectedPayMethod = method;
+  }
+
+  async function initiatePayment() {
+      const btn = document.getElementById('pay-btn');
+      btn.disabled = true;
+      btn.textContent = 'Processing…';
+      clearInterval(timerInterval);
+
+      try {
+          // Step 1: Initiate payment
+          const res = await api.post('/payments/initiate', {
+              booking_id: parseInt(bookingId),
+              method: selectedPayMethod
+          });
+
+          const transactionRef = res.transaction_ref
+
+          // Step 2: Simulate webhook (success)
+          await api.post('/payments/webhook', {
+              booking_id: parseInt(bookingId),
+              status: 'SUCCESS',
+              method: selectedPayMethod,
+              transaction_ref: transactionRef
+          });
+
+          // Show success
+          document.getElementById('step-confirm').classList.add('active');
+          openModal('success-modal');
+
+      } catch (e) {
+          document.getElementById('failure-msg').textContent = e.message || 'Payment processing failed.';
+          openModal('failure-modal');
+          btn.disabled = false;
+          btn.textContent = `Pay ${formatCurrency(price * tickets)}`;
+      }
+  }
+
+  async function cancelBooking() {
+    showConfirmModal(
+      'Cancel Booking?',
+      'This will cancel your booking and release the reserved tickets.',
+      async () => {
+        try {
+          await api.post(`/bookings/${bookingId}/cancel`, {});
+          window.location.href = 'index.html';
+        } catch(e) {
+          window.location.href = 'index.html';
+        }
+      }
+    );
+  }
+
+  function goToBookings() {
+    closeModal('success-modal');
+    window.location.href = 'my-bookings.html';
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Details — CookMyShow</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="navbar" id="main-nav"></header>
+
+<div class="page" id="page-content">
+  <div class="loader"><div class="spinner"></div><span>Loading event…</span></div>
+</div>
+
+<!-- BOOKING INTENT MODAL (Select Tickets) -->
+<div class="modal-overlay" id="booking-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="bm-title">Book Tickets</h2>
+      <button class="modal-close" onclick="closeModal('booking-modal')">✕</button>
+    </div>
+
+    <div id="bm-show-info" style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:24px">
+      <div style="font-weight:600" id="bm-event-name"></div>
+      <div style="color:var(--text-secondary);font-size:0.85rem;margin-top:4px" id="bm-show-datetime"></div>
+    </div>
+
+    <div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:var(--radius-md);padding:12px 16px;margin-bottom:20px;font-size:0.8rem;color:var(--accent)">
+      ⚡ Only <strong id="bm-avail-count">—</strong> tickets remaining
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Number of Tickets</label>
+      <div style="display:flex;align-items:center;gap:12px">
+        <button class="btn btn-secondary btn-sm" id="bm-dec" onclick="changeTickets(-1)" style="width:36px;height:36px;padding:0;border-radius:50%">−</button>
+        <span id="bm-count" style="font-family:var(--font-display);font-size:2rem;min-width:40px;text-align:center;color:var(--accent)">1</span>
+        <button class="btn btn-secondary btn-sm" id="bm-inc" onclick="changeTickets(1)" style="width:36px;height:36px;padding:0;border-radius:50%">+</button>
+      </div>
+    </div>
+
+    <div class="booking-summary" style="margin-bottom:24px">
+      <div class="summary-row">
+        <span class="label">Price per ticket</span>
+        <span class="value" id="bm-price-each">—</span>
+      </div>
+      <div class="summary-row">
+        <span class="label">Convenience fee</span>
+        <span class="value">₹0</span>
+      </div>
+      <div class="summary-row total">
+        <span class="label">Total Amount</span>
+        <span class="value" id="bm-total">—</span>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%" id="bm-proceed-btn" onclick="proceedToPayment()">
+      Proceed to Pay
+    </button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const eventId = params.get('id');
+
+  let eventData = null;
+  let showsData = [];
+  let selectedShow = null;
+  let ticketCount = 1;
+  let availabilityMap = {};
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNav('index');
+    if (!eventId) {
+      window.location.href = 'index.html';
+      return;
+    }
+    loadEvent();
+  });
+
+  async function loadEvent() {
+    const page = document.getElementById('page-content');
+    try {
+      [eventData, showsData] = await Promise.all([
+        api.get(`/events/${eventId}`),
+        api.get(`/events/${eventId}/shows`),
+      ]);
+
+      // Load availability for each show
+      const availPromises = showsData.map(s =>
+        api.get(`/shows/${s.show_id}/availability`).then(data => ({ id: s.show_id, data })).catch(() => ({ id: s.show_id, data: [] }))
+      );
+      const avails = await Promise.all(availPromises);
+      avails.forEach(a => { availabilityMap[a.id] = a.data; });
+
+      renderPage(page);
+    } catch (e) {
+      page.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Event not found</div><p class="empty-state-sub">${e.message}</p><a class="btn btn-secondary" style="margin-top:16px" href="index.html">← Back to Events</a></div>`;
+    }
+  }
+
+  function renderPage(page) {
+    const ev = eventData;
+
+    page.innerHTML = `
+      <div class="breadcrumb">
+        <a href="index.html">Events</a>
+        <span class="sep">/</span>
+        <span>${ev.event_type || 'Event'}</span>
+        <span class="sep">/</span>
+        <span style="color:var(--text-primary)">${ev.title}</span>
+      </div>
+
+      <!-- EVENT HERO -->
+      <div class="event-detail-hero">
+        ${ev.image_url
+          ? `<img class="event-detail-bg" src="${ev.image_url}" alt="${ev.title}">`
+          : `<div style="position:absolute;inset:0;background:linear-gradient(135deg,#0a0a0f,#1a1a2e);display:flex;align-items:center;justify-content:center;font-size:6rem">${categoryEmoji(ev.event_type)}</div>`
+        }
+        <div class="event-detail-overlay"></div>
+        <div class="event-detail-content">
+          <div class="event-detail-type">${ev.event_type || 'EVENT'}</div>
+          <h1 class="event-detail-title">${ev.title}</h1>
+          <div class="event-detail-meta">
+            ${ev.language ? `<span>🌐 ${ev.language}</span>` : ''}
+            ${ev.duration ? `<span>⏱ ${ev.duration} minutes</span>` : ''}
+            <span>🎟️ ${showsData.length} show${showsData.length !== 1 ? 's' : ''} available</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- LEFT: Description + Shows -->
+        <div>
+          ${ev.description ? `
+            <div style="margin-bottom:36px">
+              <h2 style="font-family:var(--font-display);font-size:1.6rem;letter-spacing:1px;margin-bottom:14px">About this <span style="color:var(--accent)">Event</span></h2>
+              <p style="color:var(--text-secondary);line-height:1.8">${ev.description}</p>
+            </div>
+          ` : ''}
+
+          <div>
+            <h2 style="font-family:var(--font-display);font-size:1.6rem;letter-spacing:1px;margin-bottom:20px">Available <span style="color:var(--accent)">Shows</span></h2>
+            <div id="shows-list">
+              ${renderShowsList()}
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Sticky Action Panel -->
+        <div style="position:sticky;top:calc(var(--nav-h) + 20px)">
+          <div style="background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius-xl);padding:28px">
+            <div style="font-family:var(--font-display);font-size:1.5rem;letter-spacing:1px;margin-bottom:8px">Book Your Spot</div>
+            <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:20px">Select a show date below to book tickets</p>
+
+            <div id="selected-show-panel" style="display:none;background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);border-radius:var(--radius-md);padding:16px;margin-bottom:16px">
+              <div style="font-size:0.75rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Selected Show</div>
+              <div style="font-weight:600" id="selected-show-label">—</div>
+            </div>
+
+            <button class="btn btn-primary" style="width:100%" id="book-btn" onclick="openBookingModal()" disabled>
+              Select a Show First
+            </button>
+
+            <button class="btn btn-ghost" style="width:100%;margin-top:12px" onclick="toggleWishlist(${ev.event_id}, this)">
+              ♡ Add to Wishlist
+            </button>
+
+            ${ev.language || ev.duration ? `
+              <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+                <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">Event Details</div>
+                ${ev.language ? `<div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:6px 0;border-bottom:1px solid var(--border)"><span style="color:var(--text-muted)">Language</span><span>${ev.language}</span></div>` : ''}
+                ${ev.duration ? `<div style="display:flex;justify-content:space-between;font-size:0.85rem;padding:6px 0"><span style="color:var(--text-muted)">Duration</span><span>${ev.duration} min</span></div>` : ''}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderShowsList() {
+    if (!showsData.length) {
+      return `<div class="empty-state"><div class="empty-state-icon">📅</div><div class="empty-state-title">No shows available</div><p class="empty-state-sub">Check back soon for upcoming shows.</p></div>`;
+    }
+
+    return showsData.map(show => {
+      const avail = availabilityMap[show.show_id];
+      const remaining = avail && avail[0] ? (avail[0].tickets_remaining ?? avail[0].available_tickets ?? avail[0].remaining ?? show.capacity) : show.capacity;
+      const { cls, label } = getAvailabilityClass(remaining, show.capacity);
+      const soldOut = remaining <= 0;
+
+      return `
+        <div class="show-card ${soldOut ? 'opacity-60' : ''}" id="show-card-${show.show_id}" onclick="${soldOut ? '' : `selectShow(${show.show_id})`}" style="${soldOut ? 'cursor:not-allowed;opacity:0.5' : ''}">
+          <div>
+            <div class="show-card-time">${formatTime(show.start_datetime)}</div>
+            <div class="show-card-date">${formatDate(show.show_date)}</div>
+          </div>
+          <div class="show-card-info">
+            ${show.end_time ? `<div style="font-size:0.78rem;color:var(--text-muted)">Ends ${formatTime(show.end_datetime)}</div>` : ''}
+            <div class="show-card-availability ${cls}">${label}</div>
+          </div>
+          <div>
+            <div class="show-card-price">${formatCurrency(show.price)}</div>
+            ${soldOut
+              ? `<div style="font-size:0.72rem;color:var(--text-muted);text-align:center;margin-top:4px">Sold Out</div>`
+              : `<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="event.stopPropagation();selectShow(${show.show_id})">Select</button>`
+            }
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function selectShow(showId) {
+    selectedShow = showsData.find(s => s.show_id === showId);
+    if (!selectedShow) return;
+
+    // Visual selection
+    document.querySelectorAll('.show-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById(`show-card-${showId}`)?.classList.add('selected');
+
+    // Update panel
+    document.getElementById('selected-show-panel').style.display = 'block';
+    document.getElementById('selected-show-label').textContent = `${formatDate(selectedShow.show_date)} at ${formatTime(selectedShow.start_datetime)} — ${formatCurrency(selectedShow.price)}`;
+
+    const btn = document.getElementById('book-btn');
+    btn.disabled = false;
+    btn.textContent = `Book — ${formatCurrency(selectedShow.price)} onwards`;
+  }
+
+  function openBookingModal() {
+    if (!Auth.isLoggedIn()) {
+      window.location.href = `login.html?redirect=event.html?id=${eventId}`;
+      return;
+    }
+    if (!selectedShow) { showToast('Please select a show first', 'error'); return; }
+
+    const avail = availabilityMap[selectedShow.show_id];
+    const remaining = avail && avail[0] ? (avail[0].tickets_remaining ?? avail[0].available_tickets ?? avail[0].remaining ?? selectedShow.capacity) : selectedShow.capacity;
+
+    ticketCount = 1;
+    document.getElementById('bm-title').textContent = eventData.title;
+    document.getElementById('bm-event-name').textContent = eventData.title;
+    document.getElementById('bm-show-datetime').textContent = `${formatDate(selectedShow.show_date)} at ${formatTime(selectedShow.start_datetime)}`;
+    document.getElementById('bm-avail-count').textContent = remaining;
+    document.getElementById('bm-count').textContent = '1';
+    document.getElementById('bm-inc').dataset.max = remaining;
+    updateBookingTotal();
+    openModal('booking-modal');
+  }
+
+  function changeTickets(delta) {
+    const max = parseInt(document.getElementById('bm-inc').dataset.max) || 10;
+    ticketCount = Math.max(1, Math.min(max, ticketCount + delta));
+    document.getElementById('bm-count').textContent = ticketCount;
+    document.getElementById('bm-dec').disabled = ticketCount <= 1;
+    document.getElementById('bm-inc').disabled = ticketCount >= max;
+    updateBookingTotal();
+  }
+
+  function updateBookingTotal() {
+    if (!selectedShow) return;
+    document.getElementById('bm-price-each').textContent = formatCurrency(selectedShow.price);
+    document.getElementById('bm-total').textContent = formatCurrency(selectedShow.price * ticketCount);
+  }
+
+  async function proceedToPayment() {
+    if (!selectedShow) return;
+    const btn = document.getElementById('bm-proceed-btn');
+    btn.disabled = true;
+    btn.textContent = 'Creating booking…';
+
+    try {
+      const booking = await api.post('/bookings', {
+        show_id: selectedShow.show_id,
+        ticket_count: ticketCount
+      });
+
+      closeModal('booking-modal');
+
+      // Navigate to payment page
+      const url = `booking.html?booking_id=${booking.booking_id}&show_id=${selectedShow.show_id}&event_id=${eventId}&tickets=${ticketCount}&price=${selectedShow.price}&expires=${encodeURIComponent(booking.expires_at)}`;
+      window.location.href = url;
+    } catch (e) {
+      showToast(e.message || 'Booking failed', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Proceed to Pay';
+    }
+  }
+</script>
+</body>
+</html>

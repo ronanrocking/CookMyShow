@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CookMyShow — Discover Events</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- NAVBAR -->
+<header class="navbar" id="main-nav"></header>
+
+<!-- TICKER -->
+<div class="ticker-strip">
+  <div id="ticker-strip" class="ticker-inner">
+    <span>★ LOADING EVENTS</span>
+  </div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Live. Laugh. Experience.</div>
+    <h1 class="hero-title">
+      YOUR NEXT<br>
+      <span class="accent">EPIC</span><br>
+      <span class="alt">NIGHT OUT</span>
+    </h1>
+    <p class="hero-sub">Concerts, comedy, theatre, and more — discover and book the best events happening near you.</p>
+    <div class="hero-actions">
+      <button class="btn btn-primary btn-lg" onclick="document.getElementById('events-section').scrollIntoView({behavior:'smooth'})">
+        Explore Events
+      </button>
+      <a class="btn btn-secondary btn-lg" href="register.html">Create Account</a>
+    </div>
+    <div class="hero-stats" id="hero-stats">
+      <div class="stat-item">
+        <span class="stat-num" id="stat-events">—</span>
+        <span class="stat-label">Events</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">50+</span>
+        <span class="stat-label">Venues</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-num">10K+</span>
+        <span class="stat-label">Happy Fans</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EVENTS SECTION -->
+<section class="section" id="events-section">
+  <div class="section-header">
+    <h2 class="section-title">All <span>Events</span></h2>
+    <div style="display:flex;gap:10px;align-items:center">
+      <select class="form-input" id="sort-select" style="width:auto;padding:8px 14px;font-size:0.8rem">
+        <option value="date_ASC">Date: Soonest</option>
+        <option value="date_DESC">Date: Latest</option>
+        <option value="price_ASC">Price: Low–High</option>
+        <option value="price_DESC">Price: High–Low</option>
+        <option value="title_ASC">A–Z</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- CATEGORY FILTERS -->
+  <div class="filter-bar" id="filter-bar">
+    <button class="filter-chip active" data-category="">All</button>
+    <button class="filter-chip" data-category="MUSIC">🎵 Music</button>
+    <button class="filter-chip" data-category="COMEDY">😂 Comedy</button>
+    <button class="filter-chip" data-category="THEATRE">🎭 Theatre</button>
+    <button class="filter-chip" data-category="SPORT">⚽ Sport</button>
+    <button class="filter-chip" data-category="CONFERENCE">🎤 Conference</button>
+    <button class="filter-chip" data-category="FESTIVAL">🎉 Festival</button>
+  </div>
+
+  <!-- SEARCH RESULTS BANNER -->
+  <div id="search-banner" style="display:none;margin-bottom:20px;padding:12px 18px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-md);font-size:0.875rem;color:var(--text-secondary)">
+    Showing results for "<strong id="search-query-text"></strong>"
+    <button onclick="clearSearch()" style="background:none;border:none;color:var(--accent);cursor:pointer;margin-left:12px;font-size:0.8rem">✕ Clear</button>
+  </div>
+
+  <!-- EVENTS GRID -->
+  <div class="events-grid" id="events-grid">
+    <div class="loader"><div class="spinner"></div><span>Loading events…</span></div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer style="padding:36px 5%;border-top:1px solid var(--border);text-align:center;color:var(--text-muted);font-size:0.8rem;margin-top:40px">
+  © 2025 CookMyShow. All rights reserved. &nbsp;|&nbsp; Made with ❤️ for live experiences.
+</footer>
+
+<script src="app.js"></script>
+<script>
+  let currentCategory = '';
+  let currentSort = 'date_ASC';
+  let searchQuery = '';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNav('index');
+
+    // Check URL for search query
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
+    if (q) {
+      searchQuery = q;
+      document.getElementById('search-banner').style.display = 'block';
+      document.getElementById('search-query-text').textContent = q;
+      loadSearchResults(q);
+    } else {
+      loadEvents();
+    }
+
+    // Filter chips
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        currentCategory = chip.dataset.category;
+        searchQuery = '';
+        document.getElementById('search-banner').style.display = 'none';
+        loadEvents();
+      });
+    });
+
+    // Sort
+    document.getElementById('sort-select').addEventListener('change', (e) => {
+      currentSort = e.target.value;
+      if (searchQuery) loadSearchResults(searchQuery);
+      else loadEvents();
+    });
+  });
+
+  function clearSearch() {
+    searchQuery = '';
+    document.getElementById('search-banner').style.display = 'none';
+    window.history.replaceState({}, '', 'index.html');
+    loadEvents();
+  }
+
+  async function loadSearchResults(q) {
+    const grid = document.getElementById('events-grid');
+    grid.innerHTML = '<div class="loader"><div class="spinner"></div><span>Searching…</span></div>';
+    try {
+      const results = await api.get(`/events/search?q=${encodeURIComponent(q)}`);
+      renderEventGrid(results || []);
+    } catch (e) {
+      grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-title">Search failed</div><p class="empty-state-sub">${e.message}</p></div>`;
+    }
+  }
+
+  async function loadEvents() {
+    const grid = document.getElementById('events-grid');
+    grid.innerHTML = '<div class="loader"><div class="spinner"></div><span>Loading events…</span></div>';
+
+    const [sortBy, order] = currentSort.split('_');
+    let url = `/events?sort_by=${sortBy}&order=${order}`;
+    if (currentCategory) url += `&category=${currentCategory}`;
+
+    try {
+      const events = await api.get(url);
+      renderEventGrid(events || []);
+
+      // Update stat counter
+      document.getElementById('stat-events').textContent = (events || []).length + '+';
+
+      // Ticker
+      const titles = (events || []).slice(0,10).map(e => e.title);
+      renderTicker(titles.length ? titles : ['Check back soon for new events!']);
+    } catch (e) {
+      grid.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><div class="empty-state-title">Couldn't load events</div><p class="empty-state-sub">${e.message}</p></div>`;
+    }
+  }
+
+  function renderEventGrid(events) {
+    const grid = document.getElementById('events-grid');
+    if (!events.length) {
+      grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🎪</div><div class="empty-state-title">No events found</div><p class="empty-state-sub">Try a different category or search term.</p></div>`;
+      return;
+    }
+    grid.innerHTML = '';
+    events.forEach((ev, i) => {
+      const card = renderEventCard(ev);
+      card.style.animationDelay = `${i * 40}ms`;
+      card.style.animation = 'fadeUp 0.4s ease both';
+      grid.appendChild(card);
+    });
+  }
+</script>
+
+<style>
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(20px); }
+  to { opacity:1; transform:translateY(0); }
+}
+</style>
+</body>
+</html>

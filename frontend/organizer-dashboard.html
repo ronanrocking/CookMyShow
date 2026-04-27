@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organizer Dashboard — CookMyShow</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="navbar" id="main-nav"></header>
+
+<div class="page">
+  <div style="max-width:1100px;margin:0 auto">
+
+    <!-- PAGE HEADER -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:36px;flex-wrap:wrap;gap:16px">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:0.72rem;color:var(--accent);letter-spacing:3px;text-transform:uppercase;margin-bottom:8px">Organizer Panel</div>
+        <h1 style="font-family:var(--font-display);font-size:2.4rem;letter-spacing:1px">Event <span style="color:var(--accent)">Dashboard</span></h1>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="filter-bar" id="dash-tabs" style="margin-bottom:32px">
+      <button class="filter-chip active" data-tab="analytics">📊 Analytics</button>
+      <button class="filter-chip" data-tab="events">🎪 My Events</button>
+      <button class="filter-chip" data-tab="create-event">+ New Event</button>
+      <button class="filter-chip" data-tab="create-show">+ New Show</button>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div id="tab-analytics">
+      <div class="analytics-grid" id="analytics-cards">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+      <div id="analytics-table-wrap" style="display:none">
+        <h2 style="font-family:var(--font-display);font-size:1.4rem;letter-spacing:1px;margin-bottom:16px;color:var(--accent)">Event Performance</h2>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden">
+          <table class="data-table" id="analytics-table">
+            <thead><tr>
+              <th>Event</th>
+              <th>Shows</th>
+              <th>Tickets Sold</th>
+              <th>Revenue</th>
+              <th>Occupancy</th>
+            </tr></thead>
+            <tbody id="analytics-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- EVENTS TAB -->
+    <div id="tab-events" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h2 style="font-family:var(--font-display);font-size:1.6rem;letter-spacing:1px">My <span style="color:var(--accent)">Events</span></h2>
+        <button class="btn btn-primary btn-sm" onclick="switchTab('create-event')">+ Create Event</button>
+      </div>
+      <div id="my-events-list">
+        <div class="loader"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- CREATE EVENT TAB -->
+    <div id="tab-create-event" style="display:none">
+      <div class="organizer-section">
+        <div class="organizer-section-title">Create New Event</div>
+
+        <div id="create-event-msg" style="display:none;margin-bottom:16px"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Event Title *</label>
+            <input type="text" id="ev-title" class="form-input" placeholder="The Grand Spectacle">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Event Type *</label>
+            <select id="ev-type" class="form-input">
+              <option value="">Select type</option>
+              <option value="MUSIC">🎵 Music</option>
+              <option value="COMEDY">😂 Comedy</option>
+              <option value="THEATRE">🎭 Theatre</option>
+              <option value="SPORT">⚽ Sport</option>
+              <option value="CONFERENCE">🎤 Conference</option>
+              <option value="FESTIVAL">🎉 Festival</option>
+              <option value="WORKSHOP">🛠️ Workshop</option>
+              <option value="ART">🎨 Art</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Language</label>
+            <input type="text" id="ev-lang" class="form-input" placeholder="English, Hindi…">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Duration (minutes)</label>
+            <input type="number" id="ev-duration" class="form-input" placeholder="120">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea id="ev-desc" class="form-input" rows="4" placeholder="Describe your event…" style="resize:vertical"></textarea>
+        </div>
+
+        <button class="btn btn-primary" onclick="handleCreateEvent()">Create Event</button>
+      </div>
+    </div>
+
+    <!-- CREATE SHOW TAB -->
+    <div id="tab-create-show" style="display:none">
+      <div class="organizer-section">
+        <div class="organizer-section-title">Schedule a Show</div>
+
+        <div id="create-show-msg" style="display:none;margin-bottom:16px"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Event *</label>
+            <select id="show-event-id" class="form-input">
+              <option value="">Loading events…</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Venue ID *</label>
+            <select id="show-venue-id" class="form-input">
+                <option value="">Loading venues...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Show Date *</label>
+            <input type="date" id="show-date" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Capacity *</label>
+            <input type="number" id="show-capacity" class="form-input" placeholder="500">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Time *</label>
+            <input type="time" id="show-start" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Time *</label>
+            <input type="time" id="show-end" class="form-input">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Ticket Price (₹) *</label>
+          <input type="number" id="show-price" class="form-input" placeholder="599">
+        </div>
+
+        <button class="btn btn-primary" onclick="createShow()">Schedule Show</button>
+      </div>
+
+      <!-- UPDATE CAPACITY SECTION -->
+      <div class="organizer-section">
+        <div class="organizer-section-title">Update Show Capacity</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Show ID</label>
+            <input type="number" id="cap-show-id" class="form-input" placeholder="Show ID">
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Capacity</label>
+            <input type="number" id="cap-new" class="form-input" placeholder="600">
+          </div>
+        </div>
+        <button class="btn btn-secondary" onclick="updateCapacity()">Update Capacity</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+  let myEvents = [];
+
+  async function fetchShowsForEvent(eventId){
+      try{
+          return await api.get(`/events/${eventId}/shows`);
+      }catch(e){
+          console.error("Failed to getch shows", e);
+          return [];
+      }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNav('organizer');
+    if (!Auth.isLoggedIn() || !Auth.isOrganizer()) {
+      showToast('Organizer access required', 'error');
+      window.location.href = 'login.html';
+      return;
+    }
+    loadVenues();
+    loadOrganizerEvents();
+    loadAnalytics();
+    loadMyEvents();
+
+    // Tab switching
+    document.querySelectorAll('#dash-tabs .filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        switchTab(chip.dataset.tab);
+      });
+    });
+  });
+
+  function switchTab(tab) {
+    ['analytics','events','create-event','create-show'].forEach(t => {
+      document.getElementById(`tab-${t}`).style.display = 'none';
+    });
+    document.getElementById(`tab-${tab}`).style.display = 'block';
+    document.querySelectorAll('#dash-tabs .filter-chip').forEach(c => {
+      c.classList.toggle('active', c.dataset.tab === tab);
+    });
+
+    if (tab === 'create-show') populateEventSelect();
+  }
+
+  async function loadAnalytics() {
+    const cards = document.getElementById('analytics-cards');
+    try {
+      const data = await api.get('/organizer/analytics');
+      if (!data || !data.length) {
+        cards.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-title">No analytics yet</div><p class="empty-state-sub">Create events and shows to see data here.</p></div>`;
+        return;
+      }
+
+      // Aggregate totals
+      const totRevenue = data.reduce((a, e) => a + (parseFloat(e.total_revenue) || 0), 0);
+      const totTickets = data.reduce((a, e) => a + (parseInt(e.tickets_sold) || 0), 0);
+      const totShows = data.reduce((a, e) => a + (parseInt(e.total_shows) || 0), 0);
+
+      cards.innerHTML = `
+        <div class="analytics-card">
+          <div class="analytics-value">${data.length}</div>
+          <div class="analytics-label">Total Events</div>
+        </div>
+        <div class="analytics-card">
+          <div class="analytics-value">${totShows}</div>
+          <div class="analytics-label">Total Shows</div>
+        </div>
+        <div class="analytics-card">
+          <div class="analytics-value">${totTickets.toLocaleString()}</div>
+          <div class="analytics-label">Tickets Sold</div>
+        </div>
+        <div class="analytics-card">
+          <div class="analytics-value" style="font-size:1.8rem">${formatCurrency(totRevenue)}</div>
+          <div class="analytics-label">Total Revenue</div>
+        </div>`;
+
+      // Table
+      const tbody = document.getElementById('analytics-tbody');
+      tbody.innerHTML = data.map(e => `
+        <tr>
+          <td style="color:var(--text-primary);font-weight:500">${e.title || e.event_title || 'Event'}</td>
+          <td>${e.total_shows || 0}</td>
+          <td>${(e.tickets_sold || 0).toLocaleString()}</td>
+          <td style="color:var(--accent)">${formatCurrency(e.total_revenue || 0)}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+                <div style="height:100%;background:var(--accent);width:${Math.min(100, Number(e.avg_occupancy ?? 0))}%;transition:width 0.5s ease"></div>
+              </div>
+              <span style="font-size:0.78rem;color:var(--text-secondary)">${Number(e.avg_occupancy ?? 0).toFixed(1)}%</span>
+            </div>
+          </td>
+        </tr>`).join('');
+
+      document.getElementById('analytics-table-wrap').style.display = 'block';
+    } catch(e) {
+      cards.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⚠️</div><p class="empty-state-sub">${e.message}</p></div>`;
+    }
+  }
+
+  async function loadMyEvents() {
+  const list = document.getElementById('my-events-list');
+
+  try {
+    myEvents = await api.get('/organizer/events') || [];
+
+    if (!myEvents.length) {
+      list.innerHTML = `<div class="empty-state">No events yet</div>`;
+      return;
+    }
+
+    let html = '';
+
+    for (const event of myEvents) {
+
+      const shows = await fetchShowsForEvent(event.event_id);
+
+      html += `
+        <div style="margin-bottom:20px;padding:16px;background:var(--bg-card);border-radius:var(--radius-md)">
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+
+          <div style="font-weight:600;font-size:1rem">
+            ${event.title}
+          </div>
+
+          <button class="btn btn-danger btn-sm"
+            onclick="deleteEvent(${event.event_id})">
+            Delete
+          </button>
+
+            </div>
+
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:12px">
+            ${shows.length} show(s)
+          </div>
+
+          ${
+            shows.length === 0
+              ? `<div style="color:var(--text-muted)">No shows created</div>`
+              : `
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  ${shows.map(show => `
+                    <div style="display:flex;justify-content:space-between;
+                                padding:10px;border:1px solid var(--border);
+                                border-radius:var(--radius-sm)">
+
+                      <div>
+                        <div>${formatDate(show.show_date)}</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted)">
+                          ₹${show.price}
+                        </div>
+                      </div>
+
+                      <button class="btn btn-secondary btn-sm"
+                        onclick="viewShowStats(${show.show_id})">
+                        Stats
+                      </button>
+
+                    </div>
+                  `).join('')}
+                </div>
+              `
+          }
+
+        </div>
+      `;
+    }
+    list.innerHTML = html;
+
+  } catch (e) {
+    list.innerHTML = `<div class="empty-state">Failed to load events</div>`;
+  }
+}
+
+  async function viewShowStats(showId) {
+      try {
+        const stats = await api.get(`/organizer/shows/${showId}/stats`);
+
+        const s = stats[0] || {};
+
+        showInfoModal(
+          "Show Stats",
+          `Tickets Sold: ${s.tickets_sold || 0}
+        Revenue: ₹${s.total_revenue || 0}
+        Bookings: ${s.total_bookings || 0}`
+        );
+
+      } catch (e) {
+        showToast("Failed to load stats", "error");
+      }
+    }
+
+  function populateEventSelect() {
+    const sel = document.getElementById('show-event-id');
+    if (!myEvents.length) {
+      sel.innerHTML = '<option value="">No events found — create one first</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">Select event</option>' +
+      myEvents.map(e => `<option value="${e.event_id}">${e.title}</option>`).join('');
+  }
+
+
+  async function createShow() {
+    const event_id = document.getElementById('show-event-id').value;
+    const venue_id = document.getElementById('show-venue-id').value;
+    const show_date = document.getElementById('show-date').value;
+    const start_time = document.getElementById('show-start').value;
+    const end_time = document.getElementById('show-end').value;
+    const capacity = document.getElementById('show-capacity').value;
+    const price = document.getElementById('show-price').value;
+    const msgDiv = document.getElementById('create-show-msg');
+
+    if (!event_id || !venue_id || !show_date || !start_time || !end_time || !capacity || !price) {
+      showMsg(msgDiv, 'Please fill in all required fields.', 'error');
+      return;
+    }
+
+      if (end_time <= start_time) {
+          showMsg(msgDiv, 'End time must be after start time.', 'error');
+          return;
+      }
+      try {
+        await api.post('/organizer/shows', {
+        event_id: parseInt(event_id),
+        venue_id: parseInt(venue_id),
+        show_date,
+        start_time,
+        end_time,
+        capacity: parseInt(capacity),
+        price: parseFloat(price)
+      });
+      showMsg(msgDiv, '✓ Show scheduled successfully!', 'success');
+      ['show-event-id','show-venue-id','show-date','show-start','show-end','show-capacity','show-price'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    } catch(e) {
+      showMsg(msgDiv, e.message, 'error');
+    }
+  }
+
+  async function updateCapacity() {
+    const showId = document.getElementById('cap-show-id').value;
+    const capacity = document.getElementById('cap-new').value;
+    if (!showId || !capacity) { showToast('Enter show ID and capacity', 'error'); return; }
+    try {
+      await api.put(`/organizer/shows/${showId}/capacity`, { capacity: parseInt(capacity) });
+      showToast('Capacity updated!', 'success');
+    } catch(e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  function showMsg(el, msg, type) {
+    const styles = {
+      success: 'background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3);color:var(--accent-green)',
+      error: 'background:rgba(232,56,109,0.12);border:1px solid rgba(232,56,109,0.3);color:var(--accent-alt)',
+    };
+    el.style.cssText = `display:block;padding:12px 16px;border-radius:var(--radius-sm);font-size:0.85rem;${styles[type]}`;
+    el.textContent = msg;
+    setTimeout(() => el.style.display = 'none', 5000);
+  }
+
+  async function loadVenues() {
+      try {
+          const venues = await api.get('/venues');
+
+          const select = document.getElementById('show-venue-id');
+          select.innerHTML = '<option value="">Select venue</option>';
+
+          venues.forEach(v => {
+              const opt = document.createElement('option');
+              opt.value = v.venue_id;
+              opt.textContent = `${v.name} (${v.city})`;
+              select.appendChild(opt);
+          });
+
+      } catch (e) {
+          showToast('Failed to load venues', 'error');
+      }
+  }
+
+      async function handleCreateEvent() {
+          try {
+              const title = document.getElementById('ev-title').value.trim();
+              const type = document.getElementById('ev-type').value;
+              const lang = document.getElementById('ev-lang').value.trim();
+              const duration = document.getElementById('ev-duration').value;
+              const desc = document.getElementById('ev-desc').value.trim();
+
+              if (!title || !type) {
+                  showToast('Title and type are required', 'error');
+                  return;
+              }
+
+              await api.post('/organizer/events', {
+                  title,
+                  event_type: type,
+                  language: lang || null,
+                  duration: duration ? parseInt(duration) : null,
+                  description: desc || null
+              });
+
+              showToast('Event created successfully', 'success');
+
+          } catch (e) {
+              showToast(e.message, 'error');
+          }
+      }
+
+  async function loadOrganizerEvents() {
+  const events = await api.get('/organizer/events');
+
+  const select = document.getElementById('show-event-id');
+  select.innerHTML = '<option value="">Select event</option>';
+
+  events.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.event_id;
+    opt.textContent = e.title;
+    select.appendChild(opt);
+  });
+  }
+
+  function viewEventDetails(event_id) {
+  window.location.href = `event.html?id=${event_id}`;
+  }
+
+  async function deleteEvent(eventId) {
+  const confirmed = confirm('Delete this event? This will cancel all bookings.');
+  if (!confirmed) return;
+
+  try {
+    await api.delete(`/organizer/events/${eventId}`);
+    showToast('Event deleted successfully', 'success');
+    loadMyEvents();
+    loadAnalytics();
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+  }
+</script>
+</body>
+</html>

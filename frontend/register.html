@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — CookMyShow</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="navbar" id="main-nav"></header>
+
+<div style="min-height:calc(100vh - var(--nav-h));display:flex;align-items:center;justify-content:center;padding:40px 20px;position:relative;overflow:hidden;">
+  <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(232,56,109,0.06) 0%,transparent 70%);pointer-events:none"></div>
+
+  <div style="width:100%;max-width:480px;position:relative;z-index:1">
+    <div style="text-align:center;margin-bottom:36px">
+      <a href="index.html" style="font-family:var(--font-display);font-size:2.2rem;letter-spacing:3px;color:var(--accent);text-decoration:none">COOK<span style="color:var(--accent-alt)">MY</span>SHOW</a>
+      <p style="color:var(--text-muted);font-size:0.85rem;margin-top:8px">Join thousands of live experience lovers</p>
+    </div>
+
+    <div style="background:var(--bg-elevated);border:1px solid var(--border-light);border-radius:var(--radius-xl);padding:40px">
+      <h1 style="font-family:var(--font-display);font-size:2rem;letter-spacing:1px;margin-bottom:6px">Create account</h1>
+      <p style="color:var(--text-secondary);font-size:0.875rem;margin-bottom:28px">Start booking events in minutes</p>
+
+      <div id="error-msg" style="display:none;background:rgba(232,56,109,0.12);border:1px solid rgba(232,56,109,0.3);border-radius:var(--radius-sm);padding:12px 16px;color:var(--accent-alt);font-size:0.85rem;margin-bottom:20px"></div>
+
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="name" class="form-input" placeholder="Your full name" autocomplete="name">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" id="email" class="form-input" placeholder="you@example.com" autocomplete="email">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Phone Number</label>
+        <input type="tel" id="phone" class="form-input" placeholder="+91 98765 43210" autocomplete="tel">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div style="position:relative">
+          <input type="password" id="password" class="form-input" placeholder="Minimum 8 characters" style="padding-right:44px">
+          <button id="toggle-pass" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.9rem">👁</button>
+        </div>
+      </div>
+
+      <!-- Account Type -->
+      <div class="form-group">
+        <label class="form-label">Account Type</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px">
+          <label style="cursor:pointer">
+            <input type="radio" name="role" value="2" id="role-customer" style="display:none">
+            <div class="role-card" id="rc-customer" onclick="selectRole(2)">
+              <div style="font-size:1.6rem;margin-bottom:8px">🎟️</div>
+              <div style="font-weight:600;font-size:0.9rem">Customer</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:3px">Book events</div>
+            </div>
+          </label>
+          <label style="cursor:pointer">
+            <input type="radio" name="role" value="3" id="role-organizer" style="display:none">
+            <div class="role-card" id="rc-organizer" onclick="selectRole(3)">
+              <div style="font-size:1.6rem;margin-bottom:8px">🎪</div>
+              <div style="font-weight:600;font-size:0.9rem">Organizer</div>
+              <div style="font-size:0.75rem;color:var(--text-muted);margin-top:3px">Host events</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="reg-btn" style="width:100%;margin-top:8px" onclick="handleRegister()">
+        Create Account
+      </button>
+
+      <div class="form-divider">or</div>
+
+      <div style="text-align:center;font-size:0.875rem;color:var(--text-secondary)">
+        Already have an account?
+        <a href="login.html" style="color:var(--accent);font-weight:600;text-decoration:none;margin-left:4px">Sign in</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.role-card {
+  padding: 16px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  text-align: center;
+  transition: all var(--transition);
+}
+.role-card:hover { border-color: var(--border-light); }
+.role-card.active { border-color: var(--accent); background: rgba(245,166,35,0.08); }
+</style>
+
+<script src="app.js"></script>
+<script>
+  let selectedRole = 2;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderNav('');
+    selectRole(2); // default
+
+    document.getElementById('toggle-pass').addEventListener('click', () => {
+      const inp = document.getElementById('password');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+  });
+
+  function selectRole(role) {
+    selectedRole = role;
+    document.getElementById('rc-customer').classList.toggle('active', role === 2);
+    document.getElementById('rc-organizer').classList.toggle('active', role === 3);
+  }
+
+  async function handleRegister() {
+    const name = document.getElementById('name').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const password = document.getElementById('password').value;
+    const errDiv = document.getElementById('error-msg');
+    const btn = document.getElementById('reg-btn');
+
+    errDiv.style.display = 'none';
+
+    if (!name || !email || !phone || !password) {
+      errDiv.textContent = 'Please fill in all fields.';
+      errDiv.style.display = 'block';
+      return;
+    }
+
+    if (password.length < 6) {
+      errDiv.textContent = 'Password must be at least 6 characters.';
+      errDiv.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Creating account…';
+
+    try {
+      await api.post('/auth/register', { name, email, phone, password, role_id: selectedRole });
+      showToast('Account created! Signing you in…', 'success');
+
+      // Auto login
+      const loginData = await api.post('/auth/login', { email, password });
+      Auth.setToken(loginData.token);
+      Auth.setRole(loginData.role_id);
+
+      setTimeout(() => {
+        window.location.href = loginData.role_id === 3 ? 'organizer-dashboard.html' : 'index.html';
+      }, 1000);
+    } catch (e) {
+      errDiv.textContent = e.message || 'Registration failed.';
+      errDiv.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
+    }
+  }
+</script>
+</body>
+</html>
